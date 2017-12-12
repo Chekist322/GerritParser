@@ -1,4 +1,9 @@
 Title^Person^Module^Date^Rate^Amount of ExtComments
+=HYPERLINK("https://myco01.ascom-ws.com/#/c/15953/","MYCO-9414: SipService reports when the CallerName of SipCall is updated.")^Ksenia Kudakova^release-10.x.x^2017-12-12
+=HYPERLINK("https://myco01.ascom-ws.com/#/c/15953/","MYCO-9414: Broadcaster and setter for CallerName were added.")^Ksenia Kudakova^release-10.x.x^2017-12-12
+=HYPERLINK("https://myco01.ascom-ws.com/#/c/15953/","MYCO-9571: Was added logic to have ability to call getCallBearer as fisrt RPC.")^Mikhail Zemskov^lollipop-dev^2017-12-12
+=HYPERLINK("https://myco01.ascom-ws.com/#/c/15953/","MYCO-9382: Fix for CTS issue 62187433")^Mikhail Zemskov^release-10.x.x^2017-12-11
+=HYPERLINK("https://myco01.ascom-ws.com/#/c/15953/","MYCO-9442: Hotfix for SIP telecom registration.")^Andrey Kulik^lollipop-dev^2017-12-09
 =HYPERLINK("https://myco01.ascom-ws.com/#/c/15953/","MYCO-9414: SipService reports when the CallerName of SipCall is updated.")^Ksenia Kudakova^lollipop-dev^2017-12-08
 =HYPERLINK("https://myco01.ascom-ws.com/#/c/15953/","MYCO-9382: Fix for CTS issue 62187433")^Mikhail Zemskov^release-9.0.x^2017-12-08
 =HYPERLINK("https://myco01.ascom-ws.com/#/c/15953/","MYCO-9414: Broadcaster and setter for CallerName were added.")^Ksenia Kudakova^lollipop-dev^2017-12-08
@@ -8,4 +13,3 @@ Title^Person^Module^Date^Rate^Amount of ExtComments
 =HYPERLINK("https://myco01.ascom-ws.com/#/c/15953/","MYCO-9382: Fix for CTS issue 62187433")^Mikhail Zemskov^lollipop-dev^2017-12-06
 =HYPERLINK("https://myco01.ascom-ws.com/#/c/15953/","MYCO-9190: Hotfix. Break is lost in a switch.")^Andrey Kulik^lollipop-dev^2017-12-01
 =HYPERLINK("https://myco01.ascom-ws.com/#/c/15953/","MYCO-9490 Cancel the login call when timeout.")^Andrey Kulik^lollipop-dev^2017-12-01
-=HYPERLINK("https://myco01.ascom-ws.com/#/c/15953/","MYCO-9334: Destroy telecom connection if a call has been disconnected.")^Andrey Kulik^lollipop-dev^2017-11-28

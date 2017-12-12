@@ -1,20 +1,32 @@
 package com.batrakov;
+
 import java.io.File;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.ParseException;
 import java.util.ArrayList;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
 
+import javax.naming.LinkRef;
+import javax.naming.RefAddr;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -26,6 +38,8 @@ import com.google.gerrit.extensions.api.GerritApi;
 import com.google.gerrit.extensions.api.changes.ReviewerInfo;
 import com.google.gerrit.extensions.common.ApprovalInfo;
 import com.google.gerrit.extensions.common.ChangeInfo;
+import com.google.gerrit.extensions.common.ChangeInput;
+import com.google.gerrit.extensions.common.ChangeMessageInfo;
 import com.google.gerrit.extensions.common.CommentInfo;
 import com.google.gerrit.extensions.common.LabelInfo;
 import com.google.gerrit.extensions.restapi.RestApiException;
@@ -33,71 +47,169 @@ import com.urswolfer.gerrit.client.rest.GerritAuthData;
 import com.urswolfer.gerrit.client.rest.GerritRestApiFactory;
 
 public class GerritParser {
-	
+
 	private static final String CODE_REVIEW = "Code-Review";
-	private static String mOutCSVString = "Title^Person^Module^Date^Rate^Amount of ExtComments\n";
-	private static String mCSVFilePath = "CSV/gerrit.txt";
+
+	private static final Object[] FILE_HEADER = { "Title", "Person", "Module", "Date", "Amount of external comments",
+			"-2", "-1", "+1", "+2" };
+
+	private static String mCSVFilePath = "CSV/gerrit.csv";
 	private static String mPathToEmployeesTable = "employees.xlsx";
 	private static List<Employee> mEmployees = new ArrayList<Employee>();
+	private static ArrayList<Integer> mTargetChangesId = new ArrayList<Integer>();
+	private static final JFrame mFrame = new JFrame("Gerrit Parser");
+	private static int mAmountOfCommits = 200;
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
+		FileWriter fileWriter = null;
 
-		getEmployeesFromFile();
+		CSVPrinter csvFilePrinter = null;
+		// Create the CSVFormat object with "\n" as a record delimiter
 
-		GerritRestApiFactory gerritRestApiFactory = new GerritRestApiFactory();
+		CSVFormat csvFileFormat = CSVFormat.EXCEL.withRecordSeparator("\n").withQuote(null).withDelimiter('\t');
 
-		GerritAuthData.Basic authData = new GerritAuthData.Basic("https://myco01.ascom-ws.com", "seprjok",
-				"DummyUser01");
-		GerritApi gerritApi = gerritRestApiFactory.create(authData);
+		String inputAmountOfCommits = JOptionPane.showInputDialog("Enter amount of commits:");
 		try {
-			List<ChangeInfo> changes = gerritApi.changes()
-					.query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES").withLimit(200).get();
-			for (ChangeInfo changeInfo : changes) {
-				
-				//Check changeInfo for good condition
-				if (changeInfo.topic != null && changeInfo.topic.contains("MYCO")
-						&& isMerasEmployee(changeInfo.owner.name)) {
+			mAmountOfCommits = Integer.parseInt(inputAmountOfCommits);
+		} catch (NumberFormatException aException) {
+			mAmountOfCommits = 200;
+		}
 
-					String commitURL = "\"https://myco01.ascom-ws.com/#/c/15953/\"";
-					String commitName = "\"" + changeInfo.subject + "\"";
-					String hyperlink = "=HYPERLINK(" + commitURL + "," + commitName + ")";
-					mOutCSVString = mOutCSVString.concat(hyperlink + "^" + changeInfo.owner.name + "^"
-							+ changeInfo.branch + "^" + changeInfo.submitted.toString().substring(0, 10));
-
-					LabelInfo label = changeInfo.labels.get(CODE_REVIEW);
-
-					for (ApprovalInfo approvalInfo : label.all) {
-						// System.out.println(approvalInfo.name);
-						// System.out.println(approvalInfo.value);
-					}
-
-					mOutCSVString = mOutCSVString.concat("\n");
+		if (getEmployeesFromFile()) {
+			Thread dialogThread = new Thread((new Runnable() {
+				public void run() {
+					JOptionPane.showMessageDialog(mFrame, "processing...");
 				}
-			}
+			}));
+			dialogThread.start();
 
-			//Write data to CSV file
+			// initialize FileWriter object
+			fileWriter = new FileWriter(mCSVFilePath);
+			// initialize CSVPrinter object
+			csvFilePrinter = new CSVPrinter(fileWriter, csvFileFormat);
+			// Create CSV file header
+			csvFilePrinter.printRecord(FILE_HEADER);
+
+			GerritRestApiFactory gerritRestApiFactory = new GerritRestApiFactory();
+
+			GerritAuthData.Basic authData = new GerritAuthData.Basic("https://myco01.ascom-ws.com", "seprjok",
+					"DummyUser01");
+			GerritApi gerritApi = gerritRestApiFactory.create(authData);
 			try {
-				File CSVFile = new File(mCSVFilePath);
-				CSVFile.getParentFile().mkdirs();
-				if (!CSVFile.exists()) {
-					CSVFile.createNewFile();
+				List<ChangeInfo> changes = gerritApi.changes()
+						.query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES")
+						.withLimit(mAmountOfCommits).get();
+				if (mAmountOfCommits > 500) {
+					int startPosition = 500;
+					while (mAmountOfCommits > 500) {
+						changes.addAll(gerritApi.changes()
+								.query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES" + "&start="
+										+ startPosition)
+								.get());
+						startPosition += 500;
+						mAmountOfCommits -= 500;
+					}
+					System.out.println(changes.size());
 				}
-				FileOutputStream outputStream = new FileOutputStream(CSVFile);
-				outputStream.write(mOutCSVString.getBytes(), 0, mOutCSVString.getBytes().length);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
+				for (ChangeInfo changeInfo : changes) {
+					List<Comparable> changeRecord = new ArrayList<Comparable>();
+					// Check changeInfo for good condition
+					if (changeInfo.topic != null && changeInfo.topic.contains("MYCO")
+							&& isMerasEmployee(changeInfo.owner.name)) {
+						mTargetChangesId.add(changeInfo._number);
+
+						String commitURL = "\"https://myco01.ascom-ws.com/#/c/" + changeInfo._number + "/\"";
+						String commitName = changeInfo.subject;
+						commitName = commitName.replace("\"", "");
+						commitName = "\"" + commitName + "\"";
+
+						String hyperlink = "=HYPERLINK(" + commitURL + "," + commitName + ")";
+
+						changeRecord.add(hyperlink);
+						changeRecord.add(changeInfo.owner.name);
+						changeRecord.add(changeInfo.project);
+						changeRecord.add(changeInfo.submitted.toString().substring(0, 10));
+
+						ArrayList<ChangeMessageInfo> messages = new ArrayList<ChangeMessageInfo>(changeInfo.messages);
+
+						int amountOfExternalComments = 0;
+						int minusTwoCounter = 0;
+						int minusOneCounter = 0;
+						int plusOneCounter = 0;
+						int plusTwoCounter = 0;
+						String strAmountOfExternalComments;
+						for (ChangeMessageInfo changeMessageInfo : messages) {
+							if (changeMessageInfo.author != null && !isMerasEmployee(changeMessageInfo.author.name)
+									&& !isJenkins(changeMessageInfo.author.name)) {
+								if (changeMessageInfo.message.contains("comments")) {
+									strAmountOfExternalComments = changeMessageInfo.message.substring(
+											changeMessageInfo.message.indexOf("comments") - 2,
+											changeMessageInfo.message.indexOf("comments") - 1);
+									try {
+										amountOfExternalComments += Integer.parseInt(strAmountOfExternalComments);
+									} catch (NumberFormatException e) {
+										amountOfExternalComments = 0;
+									}
+									
+								}
+								System.out.println(changeMessageInfo.message);
+								if (changeMessageInfo.message.contains("-2")) {
+									minusTwoCounter++;
+								}
+								if (changeMessageInfo.message.contains("-1")) {
+									minusOneCounter++;
+								}
+								if (changeMessageInfo.message.contains("+1")) {
+									plusOneCounter++;
+								}
+								if (changeMessageInfo.message.contains("+2")) {
+									plusTwoCounter++;
+								}
+								System.out.println(minusTwoCounter);
+								System.out.println(minusOneCounter);
+								System.out.println(plusOneCounter);
+								System.out.println(plusTwoCounter);
+							}
+						}
+						changeRecord.add(amountOfExternalComments);
+						changeRecord.add(minusTwoCounter);
+						changeRecord.add(minusOneCounter);
+						changeRecord.add(plusOneCounter);
+						changeRecord.add(plusTwoCounter);
+						csvFilePrinter.printRecord(changeRecord);
+					}
+				}
+
+				// Write data to CSV file
+				try {
+
+					File CSVFile = new File(mCSVFilePath);
+					CSVFile.getParentFile().mkdirs();
+					if (!CSVFile.exists()) {
+						CSVFile.createNewFile();
+					}
+					fileWriter.flush();
+					fileWriter.close();
+					csvFilePrinter.close();
+					dialogThread.interrupt();
+					JOptionPane.showMessageDialog(mFrame, "Successfuly done.");
+				} catch (IOException ignore) {
+				}
+
+			} catch (RestApiException e) {
+				dialogThread.interrupt();
+				JOptionPane.showMessageDialog(mFrame, "Error. Check your internet connection.");
 				e.printStackTrace();
 			}
-		} catch (RestApiException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		} else {
+			JOptionPane.showMessageDialog(mFrame, "Employees file not found (employees.xlsx)");
 		}
 	}
 
 	/**
 	 * Fill employees list from "employees.xlsx" file
 	 */
-	private static void getEmployeesFromFile() {
+	private static boolean getEmployeesFromFile() {
 		try {
 			FileInputStream inputStream = new FileInputStream(mPathToEmployeesTable);
 			Workbook workbook = new XSSFWorkbook(inputStream);
@@ -110,7 +222,6 @@ public class GerritParser {
 				Employee employee = new Employee();
 				while (cellIterator.hasNext()) {
 					Cell cell = cellIterator.next();
-					System.out.println(cell.getStringCellValue());
 					int column = cell.getAddress().getColumn();
 					if (column == 0) {
 						employee.setName(cell.getStringCellValue());
@@ -124,9 +235,11 @@ public class GerritParser {
 			workbook.close();
 			inputStream.close();
 
-		} catch (FileNotFoundException ignore) {
+		} catch (FileNotFoundException aException) {
+			return false;
 		} catch (IOException ignore) {
 		}
+		return true;
 	}
 
 	private static boolean isMerasEmployee(String aName) {
@@ -134,6 +247,13 @@ public class GerritParser {
 			if (aName.equals(employee.getName())) {
 				return true;
 			}
+		}
+		return false;
+	}
+
+	private static boolean isJenkins(String aName) {
+		if (aName.equals("Jenkins")) {
+			return true;
 		}
 		return false;
 	}
