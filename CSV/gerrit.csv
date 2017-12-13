@@ -108,6 +108,3 @@ Title	Person	Module	Date	Amount of external comments	-2	-1	+1	+2
 =HYPERLINK("https://myco01.ascom-ws.com/#/c/15788/","MYCO-9268: Apply fixes for kernel security issues reported in Nexus Security Bulletin for November 2017")	Vladimir Bochkov	freescale/kernel	2017-11-29	0	0	0	0	0
 =HYPERLINK("https://myco01.ascom-ws.com/#/c/15775/","MYCO-7837: Power off DECT chip")	Sergey Lychagin	ascom/hardware/ascom	2017-11-29	0	0	0	0	0
 =HYPERLINK("https://myco01.ascom-ws.com/#/c/15776/","MYCO-7837: Power off DECT chip")	Sergey Lychagin	ascom/device/myco	2017-11-29	0	0	0	0	0
-=HYPERLINK("https://myco01.ascom-ws.com/#/c/15697/","MYCO-9380: Switch On/Off DECT chip based on Admin settings switcher")	Vladimir Popov	ascom/device/myco	2017-11-28	0	0	0	0	0
-=HYPERLINK("https://myco01.ascom-ws.com/#/c/15768/","MYCO-9380: Added notification on init.svc.dectsdt prop changes.")	Andrey Matushin	ascom/device/myco	2017-11-28	0	0	0	0	0
-=HYPERLINK("https://myco01.ascom-ws.com/#/c/15649/","MYCO-9380: Added logic to handle dect on/off.")	Andrey Matushin	ascom/packages/apps/PhoneDect	2017-11-28	0	0	0	0	0
