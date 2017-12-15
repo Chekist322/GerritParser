@@ -1,360 +1,340 @@
 package com.batrakov;
 
-import java.io.File;
-
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.logging.Handler;
-import java.util.logging.LogRecord;
-
-import javax.naming.LinkRef;
-import javax.naming.RefAddr;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
+import com.google.gerrit.extensions.api.GerritApi;
+import com.google.gerrit.extensions.common.ChangeInfo;
+import com.google.gerrit.extensions.common.ChangeMessageInfo;
+import com.google.gerrit.extensions.restapi.RestApiException;
+import com.urswolfer.gerrit.client.rest.GerritAuthData;
+import com.urswolfer.gerrit.client.rest.GerritRestApiFactory;
 import org.apache.poi.common.usermodel.HyperlinkType;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.CreationHelper;
-import org.apache.poi.ss.usermodel.Font;
-import org.apache.poi.ss.usermodel.Hyperlink;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFHyperlink;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-import com.google.gerrit.extensions.api.GerritApi;
-import com.google.gerrit.extensions.api.changes.ReviewerInfo;
-import com.google.gerrit.extensions.common.ApprovalInfo;
-import com.google.gerrit.extensions.common.ChangeInfo;
-import com.google.gerrit.extensions.common.ChangeInput;
-import com.google.gerrit.extensions.common.ChangeMessageInfo;
-import com.google.gerrit.extensions.common.CommentInfo;
-import com.google.gerrit.extensions.common.LabelInfo;
-import com.google.gerrit.extensions.restapi.RestApiException;
-import com.urswolfer.gerrit.client.rest.GerritAuthData;
-import com.urswolfer.gerrit.client.rest.GerritRestApiFactory;
+import javax.swing.*;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class GerritParser {
 
-	private static final String CODE_REVIEW = "Code-Review";
+    private static String mPathToEmployeesTable = "employees.xlsx";
+    private static List<Employee> mEmployees = new ArrayList<>();
+    private static ArrayList<Integer> mTargetChangesId = new ArrayList<>();
+    private static final JFrame mFrame = new JFrame("Gerrit Parser");
+    private static Date mRequiredDate;
+    private static Date mStartDate;
+    private static XSSFWorkbook mOutWorkbook;
+    private static XSSFSheet mOutSheet;
+    private static CreationHelper mCreationHelper;
+    private static ArrayList<Object> mCellElements;
 
-	private static final Object[] FILE_HEADER = { "Title", "Person", "Module", "Date", "Amount of external comments",
-			"-2", "-1", "+1", "+2" };
+    public static void startLoading(String aLogin, char[] aPassword, String aStartDate, String aRequiredDate) {
 
-	private static String mCSVFilePath = "CSV/gerrit.csv";
-	private static String mPathToEmployeesTable = "employees.xlsx";
-	private static List<Employee> mEmployees = new ArrayList<Employee>();
-	private static ArrayList<Integer> mTargetChangesId = new ArrayList<Integer>();
-	private static final JFrame mFrame = new JFrame("Gerrit Parser");
-	private static int mAmountOfCommits = 200;
-	private static XSSFWorkbook mOutWorkbook;
-	private static XSSFSheet mOutSheet;
-	private static CreationHelper mCreationHelper;
-	private static ArrayList<Object> mCellElements;
+        if (checkInternetConnection()) {
+            if (getEmployeesFromFile()) {
+                GerritRestApiFactory gerritRestApiFactory = new GerritRestApiFactory();
+                String password = new String(aPassword);
+                GerritAuthData.Basic authData = new GerritAuthData.Basic("https://myco01.ascom-ws.com", aLogin,
+                        password);
+                password = null;
+                for (int i = 0; i < aPassword.length; i++) {
+                    aPassword[i] = 0;
+                }
+                GerritApi gerritApi = gerritRestApiFactory.create(authData);
+                if (checkAuthData(gerritApi) && aLogin != null && aPassword.length != 0) {
+                    try {
+                        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+                        try {
+                            mRequiredDate = formatter.parse(aRequiredDate);
+                        } catch (ParseException aException) {
+                            mRequiredDate = Calendar.getInstance().getTime();
+                        }
 
-	public static void startLoading(String aLogin, char[] aPassword) throws IOException {
+                        try {
+                            mStartDate = formatter.parse(aStartDate);
+                        } catch (ParseException aException) {
+                            mStartDate = Calendar.getInstance().getTime();
+                        }
 
-		if (checkInternetConnection()) {
-			if (getEmployeesFromFile()) {
+                        int startPosition = 0;
 
-				GerritRestApiFactory gerritRestApiFactory = new GerritRestApiFactory();
-				String password = new String(aPassword);
-				GerritAuthData.Basic authData = new GerritAuthData.Basic("https://myco01.ascom-ws.com", aLogin,
-						password);
-				password = null;
-				for (int i = 0; i < aPassword.length; i++) {
-					aPassword[i] = 0;
-				}
-				GerritApi gerritApi = gerritRestApiFactory.create(authData);
-				if (checkAuthData(gerritApi)) {
-					try {
+                        boolean needToProcess = true;
+                        mOutWorkbook = new XSSFWorkbook();
+                        mCreationHelper = mOutWorkbook.getCreationHelper();
+                        mOutSheet = mOutWorkbook.createSheet("Gerrit");
+                        int rowCount = 0;
+                        createHeaderRow(mOutSheet);
+                        while (needToProcess) {
 
-						String inputAmountOfCommits = JOptionPane.showInputDialog("Enter amount of commits:");
-						try {
-							mAmountOfCommits = Integer.parseInt(inputAmountOfCommits);
-						} catch (NumberFormatException aException) {
-							mAmountOfCommits = 200;
-						}
+                            List<ChangeInfo> changes = gerritApi.changes()
+                                    .query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES"
+                                            + "&start=" + startPosition).withLimit(500)
+                                    .get();
+                            startPosition += 500;
 
-						List<ChangeInfo> changes = gerritApi.changes()
-								.query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES")
-								.withLimit(mAmountOfCommits).get();
 
-						if (mAmountOfCommits > 500) {
-							int startPosition = 500;
-							while (mAmountOfCommits > 500) {
-								changes.addAll(gerritApi.changes()
-										.query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES"
-												+ "&start=" + startPosition)
-										.get());
-								startPosition += 500;
-								mAmountOfCommits -= 500;
-							}
-						}
 
-						mOutWorkbook = new XSSFWorkbook();
-						mCreationHelper = mOutWorkbook.getCreationHelper();
-						mOutSheet = mOutWorkbook.createSheet("Gerrit");
-						int rowCount = 0;
-						createHeaderRow(mOutSheet);
-						for (ChangeInfo changeInfo : changes) {
-							// Check changeInfo for good condition
-							if (changeInfo.topic != null && changeInfo.topic.contains("MYCO")
-									&& isMerasEmployee(changeInfo.owner.name)) {
-								mCellElements = new ArrayList<Object>();
+                            for (ChangeInfo changeInfo : changes) {
+                                Date currentDate;
+                                try {
+                                    currentDate = formatter.parse(changeInfo.submitted.toString().substring(0, 10));
+                                } catch (ParseException aException) {
+                                    currentDate = Calendar.getInstance().getTime();
+                                }
+                                if (currentDate.compareTo(mRequiredDate) <= 0) {
 
-								Row row = mOutSheet.createRow(++rowCount);
+                                    if (changeInfo.topic != null && changeInfo.topic.contains("MYCO")
+                                            && isMerasEmployee(changeInfo.owner.name)) {
+                                        mCellElements = new ArrayList<>();
 
-								mTargetChangesId.add(changeInfo._number);
+                                        Row row = mOutSheet.createRow(++rowCount);
 
-								String commitURL = "https://myco01.ascom-ws.com/#/c/" + changeInfo._number + "/";
-								String commitName = changeInfo.subject;
+                                        mTargetChangesId.add(changeInfo._number);
 
-								ArrayList<ChangeMessageInfo> messages = new ArrayList<ChangeMessageInfo>(
-										changeInfo.messages);
+                                        String commitURL = "https://myco01.ascom-ws.com/#/c/" + changeInfo._number + "/";
+                                        String commitName = changeInfo.subject;
 
-								int amountOfExternalComments = 0;
-								int minusTwoCounter = 0;
-								int minusOneCounter = 0;
-								int plusOneCounter = 0;
-								int plusTwoCounter = 0;
-								String strAmountOfExternalComments;
-								for (ChangeMessageInfo changeMessageInfo : messages) {
-									if (changeMessageInfo.author != null
-											&& !isMerasEmployee(changeMessageInfo.author.name)
-											&& !isJenkins(changeMessageInfo.author.name)) {
-										if (changeMessageInfo.message.contains("comments")) {
-											strAmountOfExternalComments = changeMessageInfo.message.substring(
-													changeMessageInfo.message.indexOf("comments") - 2,
-													changeMessageInfo.message.indexOf("comments") - 1);
-											try {
-												amountOfExternalComments += Integer
-														.parseInt(strAmountOfExternalComments);
-											} catch (NumberFormatException e) {
-												amountOfExternalComments = 0;
-											}
+                                        ArrayList<ChangeMessageInfo> messages = new ArrayList<>(
+                                                changeInfo.messages);
 
-										}
-										if (changeMessageInfo.message.contains("-2")) {
-											minusTwoCounter++;
-										}
-										if (changeMessageInfo.message.contains("-1")) {
-											minusOneCounter++;
-										}
-										if (changeMessageInfo.message.contains("+1")) {
-											plusOneCounter++;
-										}
-										if (changeMessageInfo.message.contains("+2")) {
-											plusTwoCounter++;
-										}
-									}
-								}
-								mCellElements.add(commitName);
-								mCellElements.add(changeInfo.owner.name);
-								mCellElements.add(changeInfo.project);
-								mCellElements.add(changeInfo.submitted.toString().substring(0, 10));
-								mCellElements.add(amountOfExternalComments);
-								mCellElements.add(minusTwoCounter);
-								mCellElements.add(minusOneCounter);
-								mCellElements.add(plusOneCounter);
-								mCellElements.add(plusTwoCounter);
-								
-								CellStyle cellStyle = mOutWorkbook.createCellStyle();
-								cellStyle.setDataFormat(
-										mCreationHelper.createDataFormat().getFormat("m/d/yy h:mm"));
-								
-								int columnCount = 0;								
-								for (Object element : mCellElements) {
-									Cell cell = row.createCell(columnCount);
-									columnCount++;
+                                        int amountOfExternalComments = 0;
+                                        int minusTwoCounter = 0;
+                                        int minusOneCounter = 0;
+                                        int plusOneCounter = 0;
+                                        int plusTwoCounter = 0;
+                                        String strAmountOfExternalComments;
+                                        for (ChangeMessageInfo changeMessageInfo : messages) {
+                                            if (changeMessageInfo.author != null
+                                                    && !isMerasEmployee(changeMessageInfo.author.name)
+                                                    && !isJenkins(changeMessageInfo.author.name)) {
+                                                if (changeMessageInfo.message.contains("comments")) {
+                                                    strAmountOfExternalComments = changeMessageInfo.message.substring(
+                                                            changeMessageInfo.message.indexOf("comments") - 2,
+                                                            changeMessageInfo.message.indexOf("comments") - 1);
+                                                    try {
+                                                        amountOfExternalComments += Integer
+                                                                .parseInt(strAmountOfExternalComments);
+                                                    } catch (NumberFormatException e) {
+                                                        amountOfExternalComments = 0;
+                                                    }
 
-									if (element instanceof String) {
-										cell.setCellValue((String) element);
-										if (cell.getColumnIndex() == 0) {
-											XSSFHyperlink hyperlink = (XSSFHyperlink) mCreationHelper
-													.createHyperlink(HyperlinkType.URL);
-											hyperlink.setAddress(commitURL);
-											cell.setHyperlink((XSSFHyperlink) hyperlink);
-										}
-										if (cell.getColumnIndex() == 3) {											
-											cell.setCellStyle(cellStyle);
-										 }
-									} else if (element instanceof Integer) {
-										cell.setCellValue((Integer) element);
-									}
-								}
-							}
-						}
-						try {
+                                                }
+                                                if (changeMessageInfo.message.contains("-2")) {
+                                                    minusTwoCounter++;
+                                                }
+                                                if (changeMessageInfo.message.contains("-1")) {
+                                                    minusOneCounter++;
+                                                }
+                                                if (changeMessageInfo.message.contains("+1")) {
+                                                    plusOneCounter++;
+                                                }
+                                                if (changeMessageInfo.message.contains("+2")) {
+                                                    plusTwoCounter++;
+                                                }
+                                            }
+                                        }
+                                        mCellElements.add(commitName);
+                                        mCellElements.add(changeInfo.owner.name);
+                                        mCellElements.add(changeInfo.project);
+                                        mCellElements.add(changeInfo.submitted.toString().substring(0, 10));
+                                        mCellElements.add(amountOfExternalComments);
+                                        mCellElements.add(minusTwoCounter);
+                                        mCellElements.add(minusOneCounter);
+                                        mCellElements.add(plusOneCounter);
+                                        mCellElements.add(plusTwoCounter);
 
-							FileOutputStream outputStream = new FileOutputStream("Gerrit.xlsx");
-							mOutWorkbook.write(outputStream);
-							JOptionPane.showMessageDialog(mFrame, "Successfuly done.");
-						} catch (IOException ignore) {
-						}
+                                        CellStyle cellStyle = mOutWorkbook.createCellStyle();
+                                        cellStyle.setDataFormat(
+                                                mCreationHelper.createDataFormat().getFormat("m/d/yy h:mm"));
 
-					} catch (RestApiException e) {
-						e.printStackTrace();
-						JOptionPane.showMessageDialog(mFrame,
-								"Error. Check your login, password or internet connection.");
-					}
-				} else {
-					JOptionPane.showMessageDialog(mFrame, "Error. Wrong login or password.");
-				}
-			} else {
-				JOptionPane.showMessageDialog(mFrame, "Employees file not found (employees.xlsx)");
-			}
-		} else {
-			JOptionPane.showMessageDialog(mFrame, "Error. Check your internet connection.");
-		}
-	}
+                                        int columnCount = 0;
+                                        for (Object element : mCellElements) {
+                                            Cell cell = row.createCell(columnCount);
+                                            columnCount++;
 
-	/**
-	 * Fill employees list from "employees.xlsx" file
-	 */
-	private static boolean getEmployeesFromFile() {
-		try {
+                                            if (element instanceof String) {
+                                                cell.setCellValue((String) element);
+                                                if (cell.getColumnIndex() == 0) {
+                                                    XSSFHyperlink hyperlink = (XSSFHyperlink) mCreationHelper
+                                                            .createHyperlink(HyperlinkType.URL);
+                                                    hyperlink.setAddress(commitURL);
+                                                    cell.setHyperlink(hyperlink);
+                                                }
+                                                if (cell.getColumnIndex() == 3) {
+                                                    cell.setCellStyle(cellStyle);
+                                                }
+                                            } else if (element instanceof Integer) {
+                                                cell.setCellValue((Integer) element);
+                                            }
+                                        }
+                                    }
 
-			System.out.println();
-			FileInputStream inputStream = new FileInputStream(mPathToEmployeesTable);
-			Workbook workbook = new XSSFWorkbook(inputStream);
-			Sheet firstSheet = workbook.getSheetAt(0);
-			Iterator<Row> iterator = firstSheet.iterator();
-			iterator.next();
-			while (iterator.hasNext()) {
-				Row nextRow = iterator.next();
-				Iterator<Cell> cellIterator = nextRow.cellIterator();
-				Employee employee = new Employee();
-				while (cellIterator.hasNext()) {
-					Cell cell = cellIterator.next();
-					int column = cell.getAddress().getColumn();
-					if (column == 0) {
-						employee.setName(cell.getStringCellValue());
-					} else if (column == 1) {
-						employee.setTeam(cell.getStringCellValue());
-					}
-				}
-				mEmployees.add(employee);
-			}
+                                    if (currentDate.compareTo(mStartDate) <= 0) {
+                                        needToProcess = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
 
-			workbook.close();
-			inputStream.close();
+                        try {
+                            FileOutputStream outputStream = new FileOutputStream("Gerrit.xlsx");
+                            mOutWorkbook.write(outputStream);
+                            JOptionPane.showMessageDialog(mFrame, "Successfuly done.");
+                        } catch (IOException ignore) {
+                        }
 
-		} catch (FileNotFoundException aException) {
-			return false;
-		} catch (IOException ignore) {
-		}
-		return true;
-	}
 
-	private static boolean isMerasEmployee(String aName) {
-		for (Employee employee : mEmployees) {
-			if (aName.equals(employee.getName())) {
-				return true;
-			}
-		}
-		return false;
-	}
+                    } catch (RestApiException e) {
+                        e.printStackTrace();
+                        JOptionPane.showMessageDialog(mFrame,
+                                "Error. Check your login, password or internet connection.");
+                    }
 
-	private static boolean isJenkins(String aName) {
-		if (aName.equals("Jenkins")) {
-			return true;
-		}
-		return false;
-	}
+                } else {
+                    JOptionPane.showMessageDialog(mFrame, "Error. Wrong login or password.");
+                }
+            } else {
+                JOptionPane.showMessageDialog(mFrame, "Employees file not found (employees.xlsx)");
+            }
+        } else {
+            JOptionPane.showMessageDialog(mFrame, "Error. Check your internet connection.");
+        }
+    }
 
-	private static boolean checkInternetConnection() {
-		GerritRestApiFactory gerritRestApiFactory = new GerritRestApiFactory();
-		GerritAuthData.Basic authData = new GerritAuthData.Basic("https://myco01.ascom-ws.com", null, null);
+    /**
+     * Fill employees list from "employees.xlsx" file
+     */
+    private static boolean getEmployeesFromFile() {
+        try {
 
-		GerritApi gerritApi = gerritRestApiFactory.create(authData);
+            System.out.println();
+            FileInputStream inputStream = new FileInputStream(mPathToEmployeesTable);
+            Workbook workbook = new XSSFWorkbook(inputStream);
+            Sheet firstSheet = workbook.getSheetAt(0);
+            Iterator<Row> iterator = firstSheet.iterator();
+            iterator.next();
+            while (iterator.hasNext()) {
+                Row nextRow = iterator.next();
+                Iterator<Cell> cellIterator = nextRow.cellIterator();
+                Employee employee = new Employee();
+                while (cellIterator.hasNext()) {
+                    Cell cell = cellIterator.next();
+                    int column = cell.getAddress().getColumn();
+                    if (column == 0) {
+                        employee.setName(cell.getStringCellValue());
+                    } else if (column == 1) {
+                        employee.setTeam(cell.getStringCellValue());
+                    }
+                }
+                mEmployees.add(employee);
+            }
 
-		try {
-			List<ChangeInfo> changes = gerritApi.changes()
-					.query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES").withLimit(mAmountOfCommits)
-					.get();
-		} catch (RestApiException e) {
-			e.printStackTrace();
-			return false;
-		}
-		return true;
-	}
+            workbook.close();
+            inputStream.close();
 
-	private static boolean checkAuthData(GerritApi aGerritApi) {
-		try {
-			List<ChangeInfo> changes = aGerritApi.changes()
-					.query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES").get();
-		} catch (RestApiException e) {
-			e.printStackTrace();
-			return false;
-		}
+        } catch (FileNotFoundException aException) {
+            return false;
+        } catch (IOException ignore) {
+        }
+        return true;
+    }
 
-		return true;
-	}
+    private static boolean isMerasEmployee(String aName) {
+        for (Employee employee : mEmployees) {
+            if (aName.equals(employee.getName())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-	private static void createHeaderRow(Sheet sheet) {
+    private static boolean isJenkins(String aName) {
+        if (aName.equals("Jenkins")) {
+            return true;
+        }
+        return false;
+    }
 
-		CellStyle cellStyle = sheet.getWorkbook().createCellStyle();
-		Font font = sheet.getWorkbook().createFont();
-		font.setBold(true);
-		font.setFontHeightInPoints((short) 16);
-		cellStyle.setFont(font);
+    private static boolean checkInternetConnection() {
+        GerritRestApiFactory gerritRestApiFactory = new GerritRestApiFactory();
+        GerritAuthData.Basic authData = new GerritAuthData.Basic("https://myco01.ascom-ws.com", null, null);
 
-		Row row = sheet.createRow(0);
+        GerritApi gerritApi = gerritRestApiFactory.create(authData);
 
-		Cell cellTitle = row.createCell(0);
-		cellTitle.setCellStyle(cellStyle);
-		cellTitle.setCellValue("Title");
+        try {
+            List<ChangeInfo> changes = gerritApi.changes()
+                    .query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES").withLimit(1)
+                    .get();
+        } catch (RestApiException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
 
-		Cell cellAuthor = row.createCell(1);
-		cellAuthor.setCellStyle(cellStyle);
-		cellAuthor.setCellValue("Person");
+    private static boolean checkAuthData(GerritApi aGerritApi) {
+        try {
+            List<ChangeInfo> changes = aGerritApi.changes()
+                    .query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES").get();
+        } catch (RestApiException e) {
+            e.printStackTrace();
+            return false;
+        }
 
-		Cell cellModule = row.createCell(2);
-		cellModule.setCellStyle(cellStyle);
-		cellModule.setCellValue("Module");
+        return true;
+    }
 
-		Cell cellDate = row.createCell(3);
-		cellDate.setCellStyle(cellStyle);
-		cellDate.setCellValue("Date");
+    private static void createHeaderRow(Sheet sheet) {
 
-		Cell cellAmount = row.createCell(4);
-		cellAmount.setCellStyle(cellStyle);
-		cellAmount.setCellValue("Amount of external comments");
+        CellStyle cellStyle = sheet.getWorkbook().createCellStyle();
+        Font font = sheet.getWorkbook().createFont();
+        font.setBold(true);
+        font.setFontHeightInPoints((short) 16);
+        cellStyle.setFont(font);
 
-		Cell cellMinusTwo = row.createCell(5);
-		cellMinusTwo.setCellStyle(cellStyle);
-		cellMinusTwo.setCellValue("-2");
+        Row row = sheet.createRow(0);
 
-		Cell cellMinusOne = row.createCell(6);
-		cellMinusOne.setCellStyle(cellStyle);
-		cellMinusOne.setCellValue("-1");
+        Cell cellTitle = row.createCell(0);
+        cellTitle.setCellStyle(cellStyle);
+        cellTitle.setCellValue("Title");
 
-		Cell cellPlusOne = row.createCell(7);
-		cellPlusOne.setCellStyle(cellStyle);
-		cellPlusOne.setCellValue("+1");
+        Cell cellAuthor = row.createCell(1);
+        cellAuthor.setCellStyle(cellStyle);
+        cellAuthor.setCellValue("Person");
 
-		Cell cellPlusTwo = row.createCell(8);
-		cellPlusTwo.setCellStyle(cellStyle);
-		cellPlusTwo.setCellValue("+2");
-	}
+        Cell cellModule = row.createCell(2);
+        cellModule.setCellStyle(cellStyle);
+        cellModule.setCellValue("Module");
+
+        Cell cellDate = row.createCell(3);
+        cellDate.setCellStyle(cellStyle);
+        cellDate.setCellValue("Date");
+
+        Cell cellAmount = row.createCell(4);
+        cellAmount.setCellStyle(cellStyle);
+        cellAmount.setCellValue("Amount of external comments");
+
+        Cell cellMinusTwo = row.createCell(5);
+        cellMinusTwo.setCellStyle(cellStyle);
+        cellMinusTwo.setCellValue("-2");
+
+        Cell cellMinusOne = row.createCell(6);
+        cellMinusOne.setCellStyle(cellStyle);
+        cellMinusOne.setCellValue("-1");
+
+        Cell cellPlusOne = row.createCell(7);
+        cellPlusOne.setCellStyle(cellStyle);
+        cellPlusOne.setCellValue("+1");
+
+        Cell cellPlusTwo = row.createCell(8);
+        cellPlusTwo.setCellStyle(cellStyle);
+        cellPlusTwo.setCellValue("+2");
+    }
 }

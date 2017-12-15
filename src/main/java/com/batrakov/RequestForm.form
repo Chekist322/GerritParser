@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="com.batrakov.RequestForm">
+  <grid id="27dc6" binding="panel" layout-manager="GridLayoutManager" row-count="5" column-count="4" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+    <margin top="0" left="0" bottom="0" right="0"/>
+    <constraints>
+      <xy x="20" y="257" width="565" height="268"/>
+    </constraints>
+    <properties>
+      <autoscrolls value="true"/>
+      <background color="-2958366"/>
+      <enabled value="true"/>
+      <focusCycleRoot value="false"/>
+      <foreground color="-2958366"/>
+      <maximumSize width="345" height="174"/>
+      <name value="panel"/>
+    </properties>
+    <border type="etched" title="Request">
+      <title-color color="-13684945"/>
+    </border>
+    <children>
+      <component id="cde10" class="javax.swing.JLabel">
+        <constraints>
+          <grid row="2" column="1" row-span="1" col-span="3" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <enabled value="true"/>
+          <font size="14"/>
+          <foreground color="-16777216"/>
+          <text value="Enter start and last date to process. (YYYY-MM-DD)"/>
+        </properties>
+      </component>
+      <component id="4c5ff" class="javax.swing.JLabel" binding="since">
+        <constraints>
+          <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <foreground color="-16777216"/>
+          <text value="Since:"/>
+        </properties>
+      </component>
+      <component id="3a4e8" class="javax.swing.JTextField" binding="requiredDate">
+        <constraints>
+          <grid row="3" column="3" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+            <preferred-size width="150" height="-1"/>
+          </grid>
+        </constraints>
+        <properties>
+          <background color="-983297"/>
+          <editable value="true"/>
+          <toolTipText value="last date"/>
+        </properties>
+      </component>
+      <component id="aec7f" class="javax.swing.JLabel" binding="to">
+        <constraints>
+          <grid row="3" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <foreground color="-16777216"/>
+          <text value="To:"/>
+        </properties>
+      </component>
+      <component id="5769e" class="javax.swing.JTextField" binding="loginField">
+        <constraints>
+          <grid row="0" column="1" row-span="1" col-span="3" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+            <preferred-size width="150" height="-1"/>
+          </grid>
+        </constraints>
+        <properties>
+          <background color="-983297"/>
+          <enabled value="true"/>
+          <toolTipText value="start date"/>
+        </properties>
+      </component>
+      <component id="4e3c6" class="javax.swing.JPasswordField" binding="passwordField">
+        <constraints>
+          <grid row="1" column="1" row-span="1" col-span="3" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+            <preferred-size width="150" height="-1"/>
+          </grid>
+        </constraints>
+        <properties>
+          <background color="-983297"/>
+        </properties>
+      </component>
+      <component id="f1ac" class="javax.swing.JLabel">
+        <constraints>
+          <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <foreground color="-16777216"/>
+          <text value="Password:"/>
+        </properties>
+      </component>
+      <component id="9eb13" class="javax.swing.JLabel">
+        <constraints>
+          <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <foreground color="-16777216"/>
+          <text value="Login:"/>
+        </properties>
+      </component>
+      <component id="1c25" class="javax.swing.JTextField" binding="startDate">
+        <constraints>
+          <grid row="3" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+            <preferred-size width="150" height="-1"/>
+          </grid>
+        </constraints>
+        <properties>
+          <background color="-983297"/>
+          <enabled value="true"/>
+          <horizontalAlignment value="10"/>
+          <toolTipText value="start date"/>
+        </properties>
+      </component>
+      <component id="7e2e8" class="javax.swing.JButton" binding="sendRequestButton" default-binding="true">
+        <constraints>
+          <grid row="4" column="3" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <alignmentX value="0.5"/>
+          <background color="-13684945"/>
+          <enabled value="true"/>
+          <foreground color="-2958366"/>
+          <horizontalAlignment value="0"/>
+          <text value="Send request"/>
+          <verticalAlignment value="0"/>
+        </properties>
+      </component>
+      <component id="93898" class="javax.swing.JLabel" binding="pleaseWaitLabel">
+        <constraints>
+          <grid row="4" column="0" row-span="1" col-span="2" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <foreground color="-5242863"/>
+          <text value="Sync in progress, please wait..."/>
+        </properties>
+      </component>
+    </children>
+  </grid>
+</form>
