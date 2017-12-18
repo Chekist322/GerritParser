@@ -220,8 +220,6 @@ public class GerritParser {
                     int column = cell.getAddress().getColumn();
                     if (column == 0) {
                         employee.setName(cell.getStringCellValue());
-                    } else if (column == 1) {
-//                        employee.setTeam(cell.getStringCellValue());
                     }
                 }
                 mEmployees.add(employee);

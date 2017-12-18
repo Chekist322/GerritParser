@@ -1,15 +1,12 @@
 package com.batrakov;
 
-import org.jdatepicker.JDatePanel;
 import org.jdatepicker.JDatePicker;
 
 import javax.swing.*;
-import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.util.Date;
 import java.util.prefs.Preferences;
 
 public class RequestForm extends JFrame {
@@ -27,9 +24,9 @@ public class RequestForm extends JFrame {
     private Preferences mPrefs = Preferences.userNodeForPackage(RequestForm.class);
 
 
-    public RequestForm() {
+    private RequestForm() {
         setContentPane(panel);
-        setBounds(100, 100, 520, 160);
+        setBounds(100, 100, 520, 190);
         setVisible(true);
         pleaseWaitLabel.setVisible(false);
         setUpListeners();

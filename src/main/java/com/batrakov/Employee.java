@@ -3,7 +3,7 @@ package com.batrakov;
 public class Employee {
 	private String mName;
 	
-	public Employee() {
+	Employee() {
 		mName = null;
 	}
 	
