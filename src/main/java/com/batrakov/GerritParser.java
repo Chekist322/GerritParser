@@ -23,16 +23,8 @@ import java.util.*;
 
 public class GerritParser {
 
-    private static String mPathToEmployeesTable = "employees.xlsx";
     private static List<Employee> mEmployees = new ArrayList<>();
-    private static ArrayList<Integer> mTargetChangesId = new ArrayList<>();
     private static final JFrame mFrame = new JFrame("Gerrit Parser");
-    private static Date mRequiredDate;
-    private static Date mStartDate;
-    private static XSSFWorkbook mOutWorkbook;
-    private static XSSFSheet mOutSheet;
-    private static CreationHelper mCreationHelper;
-    private static ArrayList<Object> mCellElements;
 
     public static void startLoading(String aLogin, char[] aPassword, String aStartDate, String aRequiredDate) {
 
@@ -42,7 +34,6 @@ public class GerritParser {
                 String password = new String(aPassword);
                 GerritAuthData.Basic authData = new GerritAuthData.Basic("https://myco01.ascom-ws.com", aLogin,
                         password);
-                password = null;
                 for (int i = 0; i < aPassword.length; i++) {
                     aPassword[i] = 0;
                 }
@@ -50,26 +41,28 @@ public class GerritParser {
                 if (checkAuthData(gerritApi) && aLogin != null && aPassword.length != 0) {
                     try {
                         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+                        Date requiredDate;
                         try {
-                            mRequiredDate = formatter.parse(aRequiredDate);
+                            requiredDate = formatter.parse(aRequiredDate);
                         } catch (ParseException aException) {
-                            mRequiredDate = Calendar.getInstance().getTime();
+                            requiredDate = Calendar.getInstance().getTime();
                         }
 
+                        Date startDate;
                         try {
-                            mStartDate = formatter.parse(aStartDate);
+                            startDate = formatter.parse(aStartDate);
                         } catch (ParseException aException) {
-                            mStartDate = Calendar.getInstance().getTime();
+                            startDate = Calendar.getInstance().getTime();
                         }
 
                         int startPosition = 0;
 
                         boolean needToProcess = true;
-                        mOutWorkbook = new XSSFWorkbook();
-                        mCreationHelper = mOutWorkbook.getCreationHelper();
-                        mOutSheet = mOutWorkbook.createSheet("Gerrit");
+                        XSSFWorkbook outWorkbook = new XSSFWorkbook();
+                        CreationHelper creationHelper = outWorkbook.getCreationHelper();
+                        XSSFSheet outSheet = outWorkbook.createSheet("Gerrit");
                         int rowCount = 0;
-                        createHeaderRow(mOutSheet);
+                        createHeaderRow(outSheet);
                         while (needToProcess) {
 
                             List<ChangeInfo> changes = gerritApi.changes()
@@ -79,23 +72,20 @@ public class GerritParser {
                             startPosition += 500;
 
 
-
                             for (ChangeInfo changeInfo : changes) {
                                 Date currentDate;
                                 try {
-                                    currentDate = formatter.parse(changeInfo.submitted.toString().substring(0, 10));
+                                    currentDate = formatter.parse(changeInfo.updated.toString().substring(0, 10));
                                 } catch (ParseException aException) {
                                     currentDate = Calendar.getInstance().getTime();
                                 }
-                                if (currentDate.compareTo(mRequiredDate) <= 0) {
+                                if (currentDate.compareTo(requiredDate) <= 0) {
 
                                     if (changeInfo.topic != null && changeInfo.topic.contains("MYCO")
                                             && isMerasEmployee(changeInfo.owner.name)) {
-                                        mCellElements = new ArrayList<>();
+                                        ArrayList<Object> cellElements = new ArrayList<>();
 
-                                        Row row = mOutSheet.createRow(++rowCount);
-
-                                        mTargetChangesId.add(changeInfo._number);
+                                        Row row = outSheet.createRow(++rowCount);
 
                                         String commitURL = "https://myco01.ascom-ws.com/#/c/" + changeInfo._number + "/";
                                         String commitName = changeInfo.subject;
@@ -139,29 +129,29 @@ public class GerritParser {
                                                 }
                                             }
                                         }
-                                        mCellElements.add(commitName);
-                                        mCellElements.add(changeInfo.owner.name);
-                                        mCellElements.add(changeInfo.project);
-                                        mCellElements.add(changeInfo.submitted.toString().substring(0, 10));
-                                        mCellElements.add(amountOfExternalComments);
-                                        mCellElements.add(minusTwoCounter);
-                                        mCellElements.add(minusOneCounter);
-                                        mCellElements.add(plusOneCounter);
-                                        mCellElements.add(plusTwoCounter);
+                                        cellElements.add(commitName);
+                                        cellElements.add(changeInfo.owner.name);
+                                        cellElements.add(changeInfo.project);
+                                        cellElements.add(changeInfo.submitted.toString().substring(0, 10));
+                                        cellElements.add(amountOfExternalComments);
+                                        cellElements.add(minusTwoCounter);
+                                        cellElements.add(minusOneCounter);
+                                        cellElements.add(plusOneCounter);
+                                        cellElements.add(plusTwoCounter);
 
-                                        CellStyle cellStyle = mOutWorkbook.createCellStyle();
+                                        CellStyle cellStyle = outWorkbook.createCellStyle();
                                         cellStyle.setDataFormat(
-                                                mCreationHelper.createDataFormat().getFormat("m/d/yy h:mm"));
+                                                creationHelper.createDataFormat().getFormat("m/d/yy h:mm"));
 
                                         int columnCount = 0;
-                                        for (Object element : mCellElements) {
+                                        for (Object element : cellElements) {
                                             Cell cell = row.createCell(columnCount);
                                             columnCount++;
 
                                             if (element instanceof String) {
                                                 cell.setCellValue((String) element);
                                                 if (cell.getColumnIndex() == 0) {
-                                                    XSSFHyperlink hyperlink = (XSSFHyperlink) mCreationHelper
+                                                    XSSFHyperlink hyperlink = (XSSFHyperlink) creationHelper
                                                             .createHyperlink(HyperlinkType.URL);
                                                     hyperlink.setAddress(commitURL);
                                                     cell.setHyperlink(hyperlink);
@@ -175,7 +165,7 @@ public class GerritParser {
                                         }
                                     }
 
-                                    if (currentDate.compareTo(mStartDate) <= 0) {
+                                    if (currentDate.compareTo(startDate) <= 0) {
                                         needToProcess = false;
                                         break;
                                     }
@@ -185,7 +175,7 @@ public class GerritParser {
 
                         try {
                             FileOutputStream outputStream = new FileOutputStream("Gerrit.xlsx");
-                            mOutWorkbook.write(outputStream);
+                            outWorkbook.write(outputStream);
                             JOptionPane.showMessageDialog(mFrame, "Successfuly done.");
                         } catch (IOException ignore) {
                         }
@@ -215,7 +205,8 @@ public class GerritParser {
         try {
 
             System.out.println();
-            FileInputStream inputStream = new FileInputStream(mPathToEmployeesTable);
+            String pathToEmployeesTable = "employees.xlsx";
+            FileInputStream inputStream = new FileInputStream(pathToEmployeesTable);
             Workbook workbook = new XSSFWorkbook(inputStream);
             Sheet firstSheet = workbook.getSheetAt(0);
             Iterator<Row> iterator = firstSheet.iterator();
@@ -256,10 +247,7 @@ public class GerritParser {
     }
 
     private static boolean isJenkins(String aName) {
-        if (aName.equals("Jenkins")) {
-            return true;
-        }
-        return false;
+        return aName.equals("Jenkins");
     }
 
     private static boolean checkInternetConnection() {
@@ -269,7 +257,7 @@ public class GerritParser {
         GerritApi gerritApi = gerritRestApiFactory.create(authData);
 
         try {
-            List<ChangeInfo> changes = gerritApi.changes()
+            gerritApi.changes()
                     .query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES").withLimit(1)
                     .get();
         } catch (RestApiException e) {
@@ -281,7 +269,7 @@ public class GerritParser {
 
     private static boolean checkAuthData(GerritApi aGerritApi) {
         try {
-            List<ChangeInfo> changes = aGerritApi.changes()
+            aGerritApi.changes()
                     .query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES").get();
         } catch (RestApiException e) {
             e.printStackTrace();

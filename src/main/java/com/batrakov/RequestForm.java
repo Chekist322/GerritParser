@@ -32,7 +32,7 @@ public class RequestForm extends JFrame {
 
     private void setUpListeners() {
 
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
         requiredDate.addKeyListener(new KeyAdapter() {
 
