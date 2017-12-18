@@ -35,7 +35,7 @@
         </constraints>
         <properties>
           <foreground color="-16777216"/>
-          <text value="Since:"/>
+          <text value="From:"/>
         </properties>
       </component>
       <component id="aec7f" class="javax.swing.JLabel">
