@@ -221,7 +221,7 @@ public class GerritParser {
                     if (column == 0) {
                         employee.setName(cell.getStringCellValue());
                     } else if (column == 1) {
-                        employee.setTeam(cell.getStringCellValue());
+//                        employee.setTeam(cell.getStringCellValue());
                     }
                 }
                 mEmployees.add(employee);
