@@ -107,7 +107,7 @@
         </constraints>
         <properties>
           <foreground color="-5242863"/>
-          <text value="Sync in progress, please wait..."/>
+          <text value="Loading in progress, please wait..."/>
         </properties>
       </component>
       <component id="a2c0" class="org.jdatepicker.JDatePicker" binding="sinceDatePicker">

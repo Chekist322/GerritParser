@@ -71,6 +71,17 @@ public class JDatePicker extends JComponent implements DatePicker {
         this(new JDatePanel());
     }
 
+    public void setFormattedTextField(int aYear, int aMonth, int aDay) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(aYear, aMonth, aDay, 0, 0, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        formattedTextField.setValue(calendar);
+    }
+
+    public void setFormattedTextField(Calendar aCalendar) {
+        formattedTextField.setValue(aCalendar);
+    }
+
     /**
      * Create a JDatePicker with an initial value, with a UtilCalendarModel.
      *
