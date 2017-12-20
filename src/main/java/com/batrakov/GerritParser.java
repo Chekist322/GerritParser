@@ -85,7 +85,7 @@ public class GerritParser {
                             if (currentDate.compareTo(requiredDate) <= 0) {
 
                                 if (changeInfo.topic != null && changeInfo.topic.contains("MYCO")
-                                        && isMerasEmployee(changeInfo.owner.name)) {
+                                        && (isMerasEmployee(changeInfo.owner.name) || mEmployees.size() == 0)) {
                                     ArrayList<Object> cellElements = new ArrayList<>();
 
                                     Row row = outSheet.createRow(++rowCount);
@@ -180,6 +180,9 @@ public class GerritParser {
                         String gerritParseFilePath = "gerrit_" + aStartDate + "_" + aRequiredDate + ".xlsx";
                         FileOutputStream outputStream = new FileOutputStream(gerritParseFilePath);
                         outWorkbook.write(outputStream);
+                        if (mEmployees.size() == 0) {
+                            JOptionPane.showMessageDialog(mFrame, "Employees file is empty, therefore all persons were included.");
+                        }
                         int openChoice = JOptionPane.showConfirmDialog(mFrame, "Successfully done. Do you want to open created table?", "Done", JOptionPane.YES_NO_OPTION);
                         switch (openChoice) {
                             case JOptionPane.YES_OPTION:
@@ -242,15 +245,11 @@ public class GerritParser {
                 }
                 mEmployees.add(employee);
             }
-
             workbook.close();
             inputStream.close();
 
-        } catch (FileNotFoundException aException) {
-            aException.printStackTrace();
-            return false;
         } catch (IOException ignore) {
-            ignore.printStackTrace();
+            return false;
         }
         return true;
     }
@@ -261,6 +260,7 @@ public class GerritParser {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -279,7 +279,6 @@ public class GerritParser {
                     .query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES").withLimit(1)
                     .get();
         } catch (RestApiException e) {
-            e.printStackTrace();
             return false;
         }
         return true;
@@ -290,7 +289,6 @@ public class GerritParser {
             aGerritApi.changes()
                     .query("status:merged&o=DETAILED_ACCOUNTS&o=DETAILED_LABELS&o=MESSAGES").get();
         } catch (RestApiException e) {
-            e.printStackTrace();
             return false;
         }
         return true;
@@ -306,9 +304,9 @@ public class GerritParser {
         cellStyle.setAlignment(HorizontalAlignment.CENTER);
 
         Row zeroRow = sheet.createRow(0);
-        sheet.addMergedRegion(new CellRangeAddress(0,0,5,8));
+        sheet.addMergedRegion(new CellRangeAddress(0,0,4,8));
 
-        Cell cellZeroRow = zeroRow.createCell(5);
+        Cell cellZeroRow = zeroRow.createCell(4);
         cellZeroRow.setCellStyle(cellStyle);
         cellZeroRow.setCellValue("External comments");
 
@@ -332,7 +330,7 @@ public class GerritParser {
 
         Cell cellAmount = row.createCell(4);
         cellAmount.setCellStyle(cellStyle);
-        cellAmount.setCellValue("Amount of external comments");
+        cellAmount.setCellValue("Amount");
 
         Cell cellMinusTwo = row.createCell(5);
         cellMinusTwo.setCellStyle(cellStyle);
