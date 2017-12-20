@@ -130,15 +130,12 @@ public class RequestForm extends JFrame {
         mPrefs.put(TO_DATE_PREF_DAY, String.valueOf(toDatePicker.getModel().getDay()));
 
         final String since = String.valueOf(sinceDatePicker.getModel().getYear()) +
-                "-" + String.valueOf(sinceDatePicker.getModel().getMonth()) +
+                "-" + String.valueOf(sinceDatePicker.getModel().getMonth()+1) +
                 "-" + String.valueOf(sinceDatePicker.getModel().getDay());
 
         final String to = String.valueOf(toDatePicker.getModel().getYear()) +
-                "-" + String.valueOf(toDatePicker.getModel().getMonth()) +
+                "-" + String.valueOf(toDatePicker.getModel().getMonth()+1) +
                 "-" + String.valueOf(toDatePicker.getModel().getDay());
-
-        System.out.println(since);
-
 
         Thread thread = new Thread(new Runnable() {
             @Override

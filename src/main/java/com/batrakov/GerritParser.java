@@ -201,7 +201,6 @@ public class GerritParser {
             } else {
                 JOptionPane.showMessageDialog(mFrame, "Error. Wrong login or password.");
             }
-
         } else {
             JOptionPane.showMessageDialog(mFrame, "Error. Check your internet connection.");
         }
@@ -294,7 +293,6 @@ public class GerritParser {
             e.printStackTrace();
             return false;
         }
-
         return true;
     }
 
@@ -380,6 +378,5 @@ public class GerritParser {
         } catch (IOException aE) {
             aE.printStackTrace();
         }
-
     }
 }
